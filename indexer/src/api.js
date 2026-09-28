@@ -2,7 +2,7 @@ import express from "express";
 import rateLimit from "express-rate-limit";
 import { db } from "./db.js";
 import { fetchTokenMetadata } from "./sep41Metadata.js";
-import { health } from "./index.js";
+import { health, eventEmitter } from "./index.js";
 
 const PORT = process.env.PORT || 3001;
 
@@ -80,6 +80,32 @@ export function startApi() {
       res.status(200).json({ status: "ok", db: "connected", latestLedger: health.lastLedger });
     })
   );
+
+  // GET /api/events/stream — Server-Sent Events live feed
+  // Must be declared before /api/events/:seq so "stream" is not parsed as a seq.
+  app.get("/api/events/stream", (req, res) => {
+    // Prevent Nginx / reverse-proxy response buffering
+    res.setHeader("X-Accel-Buffering", "no");
+    res.setHeader("Content-Type", "text/event-stream");
+    res.setHeader("Cache-Control", "no-cache");
+    res.setHeader("Connection", "keep-alive");
+    res.flushHeaders();
+
+    // Keep the connection alive with a comment ping every 15 s
+    const keepAlive = setInterval(() => res.write(": ping\n\n"), 15_000);
+
+    const onEvent = (ev) => {
+      res.write(`data: ${JSON.stringify(ev)}\n\n`);
+    };
+
+    eventEmitter.on("event", onEvent);
+
+    // Clean up when the client disconnects
+    req.on("close", () => {
+      clearInterval(keepAlive);
+      eventEmitter.off("event", onEvent);
+    });
+  });
 
   // GET /api/events?contract=&fn=&page=&q=
   app.get(

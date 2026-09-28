@@ -1,8 +1,16 @@
 import "dotenv/config";
+import { EventEmitter } from "node:events";
 import { SorobanRpc } from "@stellar/stellar-sdk";
 import { startApi } from "./api.js";
 import { db } from "./db.js";
 import { decode } from "./decoder.js";
+
+/**
+ * Application-wide event bus.
+ * Emits `'event'` with the decoded event object each time a new event is
+ * stored, so the SSE endpoint in api.js can fan-out to connected clients.
+ */
+export const eventEmitter = new EventEmitter();
 
 /** @typedef {import('./types.js').HealthState} HealthState */
 
@@ -38,6 +46,7 @@ async function indexLedger(ledger) {
   for (const ev of res.events) {
     const decoded = await decode(ev);
     await db.upsertEvent(decoded);
+    eventEmitter.emit("event", decoded);
     console.log(`[${ev.ledger}] ${decoded.function}: ${decoded.description}`);
   }
 
