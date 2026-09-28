@@ -4,9 +4,27 @@ import pg from "pg";
 /** @typedef {import('./types.js').ContractMeta} ContractMeta */
 /** @typedef {import('./types.js').VolumeResult} VolumeResult */
 
+const DEFAULT_POOL_SIZE = 20;
+const POOL_SIZE_MIN = 1;
+const POOL_SIZE_MAX = 100;
+
+function resolvePoolSize() {
+  const raw = process.env.DATABASE_POOL_SIZE;
+  if (raw === undefined || raw === "") return DEFAULT_POOL_SIZE;
+  const parsed = Number(raw);
+  if (!Number.isInteger(parsed) || parsed < POOL_SIZE_MIN || parsed > POOL_SIZE_MAX) {
+    console.warn(
+      `DATABASE_POOL_SIZE="${raw}" is outside the allowed range (${POOL_SIZE_MIN}–${POOL_SIZE_MAX}). ` +
+        `Falling back to default of ${DEFAULT_POOL_SIZE}.`
+    );
+    return DEFAULT_POOL_SIZE;
+  }
+  return parsed;
+}
+
 const pool = new pg.Pool({
   connectionString: process.env.DATABASE_URL,
-  max: 20,
+  max: resolvePoolSize(),
   idleTimeoutMillis: 30000,
   connectionTimeoutMillis: 5000,
 });
