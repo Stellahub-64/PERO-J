@@ -98,7 +98,7 @@ function topicToBase64(topic) {
  * @param {string} contractName  - Display name for the contract
  * @returns {string}
  */
-function buildDescription(fn, args, data, contractName) {
+export function buildDescription(fn, args, data, contractName) {
   switch (fn) {
     case "swap": {
       const [from, amtIn, tokenIn, amtOut, tokenOut] = args;
@@ -108,6 +108,10 @@ function buildDescription(fn, args, data, contractName) {
       const [from, to, amount, token] = args;
       return `Address ${fmt(from)} transferred ${amount} ${token ?? ""} to ${fmt(to)} on ${contractName}`;
     }
+    case "transfer_from": {
+      const [spender, from, to, amount, token] = args;
+      return `Address ${fmt(from)} (via ${fmt(spender)}) transferred ${amount} ${token ?? ""} to ${fmt(to)} on ${contractName}`;
+    }
     case "mint": {
       const [to, amount, token] = args;
       return `${amount} ${token ?? ""} minted to ${fmt(to)} on ${contractName}`;
@@ -115,6 +119,10 @@ function buildDescription(fn, args, data, contractName) {
     case "burn": {
       const [from, amount, token] = args;
       return `${amount} ${token ?? ""} burned from ${fmt(from)} on ${contractName}`;
+    }
+    case "burn_from": {
+      const [spender, from, amount, token] = args;
+      return `${amount} ${token ?? ""} burned from ${fmt(from)} (via ${fmt(spender)}) on ${contractName}`;
     }
     default:
       return genericDescription(fn, args, data, contractName);
