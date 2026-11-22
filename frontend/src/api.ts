@@ -11,6 +11,8 @@ export interface DecodedEvent {
   created_at?: string;
   sac_asset?: string;
   onchain_seq?: number | null;
+  optimisticStatus?: "pending" | "confirmed";
+  optimisticId?: string;
 }
 
 export interface ContractMeta {

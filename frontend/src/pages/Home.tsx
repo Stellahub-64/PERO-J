@@ -1,5 +1,4 @@
-import { useState, useEffect } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "../api";
 import EventTable from "../components/EventTable";
@@ -11,12 +10,6 @@ export default function Home() {
   const [useCustom, setUseCustom] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [page, setPage] = useState(1);
-
-  const { data: functions = [], isLoading: functionsLoading } = useQuery({
-    queryKey: ["distinctFunctions"],
-    queryFn: () => api.distinctFunctions(),
-    staleTime: 5 * 60 * 1000,
-  });
 
   const { data, isLoading } = useQuery({
     queryKey: ["events", fnFilter, customFn, page],

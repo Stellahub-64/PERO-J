@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { Fragment, useState } from "react";
 import { Link } from "react-router-dom";
 import type { DecodedEvent } from "../api";
+import { OptimisticBetStatus } from "./OptimisticBetStatus";
 
 interface Props {
   events: DecodedEvent[];
@@ -52,14 +53,19 @@ export default function EventTable({ events }: Props) {
             const isExpanded = expandedSeq === ev.seq;
             const isLongDescription = ev.description.length > 60;
             return (
-              <>
-                <tr key={`row-${ev.seq}`} style={{ borderBottom: "1px solid var(--border)" }}>
+              <Fragment key={`event-${ev.seq}`}>
+                <tr key={`row-${ev.seq}`} className={ev.optimisticStatus === "pending" ? "pending-row" : undefined} style={{ borderBottom: "1px solid var(--border)" }}>
                   <td style={td}>
                     <Link to={`/event/${ev.seq}`}>#{ev.seq}</Link>
                   </td>
                   <td style={td}>{ev.ledger.toLocaleString()}</td>
                   <td style={td}>
                     <span className="badge">{ev.function}</span>
+                    {ev.optimisticStatus && (
+                      <span style={{ marginLeft: 8 }}>
+                        <OptimisticBetStatus status={ev.optimisticStatus} />
+                      </span>
+                    )}
                   </td>
                   <td 
                     style={{ 
@@ -90,7 +96,7 @@ export default function EventTable({ events }: Props) {
                     </td>
                   </tr>
                 )}
-              </>
+              </Fragment>
             );
           })}
         </tbody>

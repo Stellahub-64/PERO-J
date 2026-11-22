@@ -69,6 +69,36 @@ button:hover { opacity: 0.85; }
 }
 .badge.green { background: #1a3a22; color: var(--green); }
 .badge.yellow { background: #3a2e0a; color: var(--yellow); }
+.badge.red { background: #3a1a1a; color: #ff7b72; }
+
+.pending-row { background: color-mix(in srgb, var(--yellow) 7%, transparent); }
+.pending-spinner {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  margin-right: 6px;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  vertical-align: -1px;
+  animation: optimistic-spin 0.8s linear infinite;
+}
+@keyframes optimistic-spin { to { transform: rotate(360deg); } }
+
+.toast {
+  position: fixed;
+  right: 20px;
+  bottom: 20px;
+  z-index: 1000;
+  max-width: 360px;
+  padding: 12px 16px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
+  color: var(--text);
+}
+.toast.error { border-color: #da3633; }
 
 /* Mobile responsive styles */
 @media (max-width: 600px) {
