@@ -1,50 +1,51 @@
-version: '3.8'
-
 services:
   postgres:
     image: postgres:16-alpine
+    restart: unless-stopped
     environment:
-      POSTGRES_USER: user
-      POSTGRES_PASSWORD: password
-      POSTGRES_DB: soroban_explorer
+      POSTGRES_USER: ${POSTGRES_USER:-peroj}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-peroj}
+      POSTGRES_DB: ${POSTGRES_DB:-peroj}
     ports:
       - "5432:5432"
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - postgres-data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U user -d soroban_explorer"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-peroj} -d ${POSTGRES_DB:-peroj}"]
       interval: 5s
       timeout: 5s
-      retries: 5
+      retries: 10
 
   indexer:
     build:
-      context: ./indexer
-    environment:
-      DATABASE_URL: postgres://user:password@postgres:5432/soroban_explorer
-      SOROBAN_RPC_URL: https://soroban-testnet.stellar.org
-      HORIZON_URL: https://horizon-testnet.stellar.org
-      NETWORK_PASSPHRASE: "Test SDF Network ; September 2015"
-      START_LEDGER: 0
-      POLL_MS: 5000
-      PORT: 3001
-      SAC_ASSETS: "[]"
-      EXPLORER_CONTRACT_ID: ""
-    ports:
-      - "3001:3001"
+      context: .
+      dockerfile: indexer/Dockerfile
+    restart: unless-stopped
     depends_on:
       postgres:
         condition: service_healthy
+    environment:
+      DATABASE_URL: ${DATABASE_URL:-postgres://peroj:peroj@postgres:5432/peroj}
+      DATABASE_POOL_SIZE: ${DATABASE_POOL_SIZE:-20}
+      RPC_URL: ${RPC_URL:-https://soroban-testnet.stellar.org}
+      NETWORK_PASSPHRASE: ${NETWORK_PASSPHRASE:-Test SDF Network ; September 2015}
+      EXPLORER_CONTRACT_ID: ${EXPLORER_CONTRACT_ID:-}
+      API_ADMIN_KEY: ${API_ADMIN_KEY:-}
+      PORT: ${INDEXER_PORT:-3001}
+    ports:
+      - "3001:3001"
 
   frontend:
     build:
       context: ./frontend
-    environment:
-      VITE_API_PROXY: http://indexer:3001
-    ports:
-      - "5173:5173"
+      dockerfile: Dockerfile
+    restart: unless-stopped
     depends_on:
       - indexer
+    environment:
+      VITE_API_URL: ${VITE_API_URL:-http://localhost:3001}
+    ports:
+      - "5173:5173"
 
 volumes:
-  postgres_data:
+  postgres-data:

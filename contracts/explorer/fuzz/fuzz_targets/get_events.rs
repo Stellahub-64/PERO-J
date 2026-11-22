@@ -65,3 +65,35 @@ fuzz_target!(|input: GetEventsInput| {
         );
     }
 });
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn setup() -> (Env, ExplorerContractClient<'static>) {
+        let env = Env::default();
+        env.mock_all_auths();
+
+        let id = env.register_contract(None, ExplorerContract);
+        let client = ExplorerContractClient::new(&env, &id);
+
+        let admin = Address::generate(&env);
+        client.init(&admin);
+
+        (env, client)
+    }
+
+    #[test]
+    fn get_events_accepts_limit_at_max_page() {
+        let (_env, client) = setup();
+        let result = client.get_events(&0, &MAX_PAGE);
+        assert!(result.len() <= MAX_PAGE as usize);
+    }
+
+    #[test]
+    #[should_panic]
+    fn get_events_panics_when_limit_exceeds_max_page() {
+        let (_env, client) = setup();
+        client.get_events(&0, &(MAX_PAGE + 1));
+    }
+}

@@ -1,5 +1,5 @@
 [package]
-name = "soroban-explorer-contract-fuzz"
+name = "soroban-explorer-fuzz"
 version = "0.0.0"
 publish = false
 edition = "2021"
@@ -8,18 +8,22 @@ edition = "2021"
 cargo-fuzz = true
 
 [dependencies]
-arbitrary = { version = "1.3.0", features = ["derive"] }
 libfuzzer-sys = "0.4"
-soroban-sdk = { version = "21.0.0", features = ["testutils"] }
 
-[dependencies.soroban-explorer-contract]
+[dependencies.soroban-explorer]
 path = ".."
 
 [[bin]]
-name = "get_events"
-path = "fuzz_targets/get_events.rs"
+name = "submit_event"
+path = "fuzz_targets/submit_event.rs"
 test = false
 doc = false
-bench = false
 
-[workspace]
+[[bin]]
+name = "register_contract"
+path = "fuzz_targets/register_contract.rs"
+test = false
+doc = false
+
+[profile.release]
+debug = 1

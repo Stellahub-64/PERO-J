@@ -1,12 +1,14 @@
 -include .env
 export EXPLORER_CONTRACT_ID
 
-.PHONY: build test deploy redeploy indexer frontend clean seed-testnet load-test changelog
+.PHONY: build test deploy redeploy indexer frontend clean seed-testnet load-test changelog db dev-docker
 
 # ── Contract ──────────────────────────────────────────────────────────────────
 build:
 	cargo build --release --target wasm32-unknown-unknown \
 	  -p soroban-explorer-contract
+	wasm-opt -Oz target/wasm32-unknown-unknown/release/soroban_explorer_contract.wasm \
+	  -o target/wasm32-unknown-unknown/release/soroban_explorer_contract.optimized.wasm
 
 test:
 	cargo test -p soroban-explorer-contract
@@ -39,6 +41,12 @@ indexer-install:
 indexer:
 	cd indexer && NODE_ENV=production npm start
 
+# ── Migrations (issue #858) ───────────────────────────────────────────────────
+# Run db.init() in isolation — applies schema migrations without starting the
+# polling loop or the API server. Exits 0 on success, non-zero on failure.
+migrate:
+	cd indexer && NODE_ENV=production npm run migrate
+
 # ── Frontend ──────────────────────────────────────────────────────────────────
 frontend-install:
 	cd frontend && npm install
@@ -52,8 +60,16 @@ frontend-build:
 # ── All ───────────────────────────────────────────────────────────────────────
 install: indexer-install frontend-install
 
+db:
+	docker compose up -d db
+
 dev:
 	$(MAKE) -j2 indexer frontend
+
+# ── Docker Compose (issue #839) ───────────────────────────────────────────────
+# Start the full local stack (postgres + indexer + frontend) via Docker Compose.
+dev-docker:
+	docker compose up --build
 
 clean:
 	cargo clean
@@ -136,5 +152,19 @@ e2e-ci:
 # Regenerate CHANGELOG.md from conventional commits using git-cliff.
 # Install: cargo install git-cliff  OR  brew install git-cliff
 changelog:
-	git-cliff --config cliff.toml --output CHANGELOG.md
+	git-cliff --config cliff.toml --unreleased --output CHANGELOG.md
 	@echo "CHANGELOG.md updated."
+
+changelog-preview:
+	git-cliff --config cliff.toml --unreleased
+
+help:
+	@printf "Available targets:\n"
+	@printf "  make build              Build the contract WASM\n"
+	@printf "  make test               Run contract tests\n"
+	@printf "  make migrate            Apply DB migrations without starting the indexer\n"
+	@printf "  make dev                Start the indexer and frontend\n"
+	@printf "  make dev-docker         Start the full stack via Docker Compose\n"
+	@printf "  make e2e                Run the full end-to-end suite\n"
+	@printf "  make changelog          Update CHANGELOG.md with unreleased changes\n"
+	@printf "  make changelog-preview  Preview unreleased changes without modifying files\n"

@@ -56,6 +56,33 @@
         { "name": "user",  "kind": "address" },
         { "name": "asset", "kind": "address" }
       ]
+    },
+    {
+      "name": "stake",
+      "description": "Stake tokens into the Blend backstop or staking module",
+      "params": [
+        { "name": "from",   "kind": "address" },
+        { "name": "amount", "kind": "i128"    },
+        { "name": "token",  "kind": "address" }
+      ]
+    },
+    {
+      "name": "unstake",
+      "description": "Unstake tokens previously staked in the Blend backstop or staking module",
+      "params": [
+        { "name": "from",   "kind": "address" },
+        { "name": "amount", "kind": "i128"    },
+        { "name": "token",  "kind": "address" }
+      ]
+    },
+    {
+      "name": "deposit",
+      "description": "Deposit tokens into the protocol",
+      "params": [
+        { "name": "from",   "kind": "address" },
+        { "name": "amount", "kind": "i128"    },
+        { "name": "token",  "kind": "address" }
+      ]
     }
   ]
 }

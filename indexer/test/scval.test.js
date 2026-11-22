@@ -4,6 +4,28 @@ import { xdr } from "@stellar/stellar-sdk";
 import { scValToJs } from "../src/scval.js";
 
 describe("scValToJs", () => {
+  it("returns an empty string for scvLedgerKeyContractInstance", () => {
+    const val = xdr.ScVal.scvLedgerKeyContractInstance();
+    assert.equal(scValToJs(val), "");
+  });
+
+  it("returns an empty string for scvContractInstance", () => {
+    const val = xdr.ScVal.scvContractInstance(
+      new xdr.ScContractInstance({
+        executable: xdr.ContractExecutable.contractExecutableWasm(Buffer.alloc(32)),
+        storage: [],
+      })
+    );
+    assert.equal(scValToJs(val), "");
+  });
+
+  it("preserves the nonce value for scvLedgerKeyNonce", () => {
+    const val = xdr.ScVal.scvLedgerKeyNonce(
+      new xdr.ScNonceKey({ nonce: xdr.Int64.fromString("123") })
+    );
+    assert.equal(scValToJs(val), "<nonce:123>");
+  });
+
   describe("scvI128", () => {
     it("correctly handles negative hi component for -1n", () => {
       const val = xdr.ScVal.scvI128(
@@ -33,6 +55,16 @@ describe("scValToJs", () => {
         })
       );
       assert.equal(scValToJs(val), 18446744073709552116n);
+    });
+
+    it("formats the minimum signed 128-bit value without overflow", () => {
+      const val = xdr.ScVal.scvI128(
+        new xdr.Int128Parts({
+          hi: xdr.Int64.fromString("-9223372036854775808"),
+          lo: xdr.Uint64.fromString("0"),
+        })
+      );
+      assert.equal(scValToJs(val).toString(), "-170141183460469231731687303715884105728");
     });
   });
 

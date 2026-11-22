@@ -1,0 +1,48 @@
+{
+  "id": "CAIN2V776IOGWBS75BVEY7BR3RSVEPVXQFTTIEPLSRLHJICSPCZT47KZ",
+  "name": "Phoenix",
+  "description": "Constant-product DEX on Stellar testnet (Tranche 2 integration fixture)",
+  "functions": [
+    {
+      "name": "swap",
+      "description": "Swap an exact amount of token_in for at least min_out of token_out in a Phoenix pool",
+      "params": [
+        { "name": "caller",    "kind": "address" },
+        { "name": "token_in",  "kind": "address" },
+        { "name": "token_out", "kind": "address" },
+        { "name": "amount_in", "kind": "i128"    },
+        { "name": "min_out",   "kind": "i128"    }
+      ]
+    },
+    {
+      "name": "add_liquidity",
+      "description": "Deposit token_a and token_b into a Phoenix pool and receive LP tokens",
+      "params": [
+        { "name": "caller",     "kind": "address" },
+        { "name": "token_a",    "kind": "address" },
+        { "name": "token_b",    "kind": "address" },
+        { "name": "amount_a",   "kind": "i128"    },
+        { "name": "amount_b",   "kind": "i128"    },
+        { "name": "min_lp_out", "kind": "i128"    }
+      ]
+    },
+    {
+      "name": "remove_liquidity",
+      "description": "Burn LP tokens and withdraw the underlying token_a and token_b from a Phoenix pool",
+      "params": [
+        { "name": "caller",     "kind": "address" },
+        { "name": "lp_amount",  "kind": "i128"    },
+        { "name": "min_a_out",  "kind": "i128"    },
+        { "name": "min_b_out",  "kind": "i128"    }
+      ]
+    },
+    {
+      "name": "get_reserves",
+      "description": "Return the current token_a and token_b reserves of the Phoenix pool",
+      "params": [
+        { "name": "token_a", "kind": "address" },
+        { "name": "token_b", "kind": "address" }
+      ]
+    }
+  ]
+}

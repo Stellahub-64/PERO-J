@@ -1,95 +1,110 @@
 # Security Policy
 
-## Supported Versions
+This document describes the security-critical operational procedures for the
+PERO-J explorer contract (`contracts/explorer`). It covers the admin transfer
+procedure and its required auth envelope, emergency recovery if the admin key is
+lost, and management of the indexer allowlist.
 
-| Version | Status | Security Updates |
-|---------|--------|------------------|
-| 1.x (Testnet) | Active | Yes |
-| < 1.0 | Pre-release | No |
+## Admin model
 
-Mainnet releases will receive security updates for a minimum of 12 months from release.
+The contract stores a single `Admin` address in **persistent** storage under
+`DataKey::Admin`. The admin is the only address that may:
 
-## Reporting a Vulnerability
+- transfer admin rights (`transfer_admin`),
+- add or remove indexer allowlist entries (`add_indexer` / `remove_indexer`),
+- register and update contract metadata.
 
-If you discover a security vulnerability in PERO-J, please report it privately to prevent public disclosure before a fix is available.
+Because the admin entry lives in persistent storage it can be archived but never
+silently disappears, so an expired instance entry can never make the contract
+look uninitialised or re-initialisable.
 
-**Do not open a public GitHub issue for security vulnerabilities.**
+## Admin transfer procedure
 
-### Reporting Methods
+`transfer_admin` moves admin rights from the current admin to a new address. It
+requires the **current admin's** authorization; the new admin does not need to
+sign.
 
-1. **GitHub Security Advisory (Preferred)**
-   - Navigate to the [Security tab](https://github.com/PERO-J/PERO-J/security/advisories)
-   - Click "Report a vulnerability"
-   - Fill out the form with details of the vulnerability
-   - This creates a private discussion visible only to maintainers
+### Required auth envelope
 
-2. **Email**
-   - Send a detailed report to: `security@pero-j.dev`
-   - Include steps to reproduce, impact assessment, and proposed remediation
-   - PGP key available upon request for highly sensitive disclosures
+`transfer_admin` calls `current_admin.require_auth()` on the address currently
+stored under `DataKey::Admin`. The invocation must therefore carry a valid
+authorization entry for that exact address. For a Soroban invocation this means:
 
-### What to Include
+- the transaction's auth entry must be signed by the **current admin** address,
+- the auth entry must target this contract and the `transfer_admin` function,
+- the signature must be valid for the current ledger (not expired).
 
-- **Description:** Clear explanation of the vulnerability
-- **Type:** (e.g., smart contract logic flaw, input validation, XSS, injection, etc.)
-- **Affected Component:** (e.g., on-chain contract, indexer, frontend)
-- **Steps to Reproduce:** Detailed instructions or proof-of-concept
-- **Impact:** Severity and potential consequences
-- **Suggested Fix:** (optional, but appreciated)
+If the auth envelope is missing, targets a different address, or is signed by
+anyone other than the current admin, the call fails with `Error::Unauthorized`.
 
-## Response Timeline
+### Steps
 
-- **Initial Acknowledgment:** Within 24 hours
-- **Triage & Assessment:** Within 72 hours
-- **Fix Development & Testing:** Varies by severity (see below)
-- **Public Disclosure:** Coordinated with the reporter, typically 30–90 days after a fix is released
+1. Confirm the new admin address out-of-band (e.g. verify the public key with
+the receiving operator).
+2. Build the `transfer_admin(new_admin)` invocation and attach an auth envelope
+   signed by the **current** admin.
+3. Submit the transaction. On success, `DataKey::Admin` is overwritten with
+   `new_admin` and the previous admin immediately loses all admin privileges.
+4. Verify the transfer by reading the admin address back from storage.
 
-### Severity Levels
+> The transfer is atomic: there is no window in which both addresses hold admin
+> rights, and no window in which neither does.
 
-| Severity | Examples | Timeline |
-|----------|----------|----------|
-| **Critical** | Fund loss, contract lock-up, consensus failure | 7 days |
-| **High** | Unauthorized state changes, access control bypass | 14 days |
-| **Medium** | Information leakage, denial-of-service | 30 days |
-| **Low** | Minor bugs, edge cases with limited impact | 60 days |
+## Emergency recovery (admin key lost)
 
-## Responsible Disclosure
+If the admin key is lost or compromised, the contract cannot be re-initialised —
+`init` is guarded by the persistent `Admin` marker and will fail with
+`Error::AlreadyExists`. Recovery therefore depends on the situation:
 
-We follow coordinated vulnerability disclosure practices:
+- **Key lost, no backup:** admin rights cannot be recovered through the
+  contract. The only path is to deploy a new instance of the contract and
+  re-register the contract metadata. Treat the old instance as read-only.
+- **Key compromised:** if the attacker has not yet transferred admin, use the
+  still-valid key to immediately `transfer_admin` to a freshly generated, secure
+  address. Do this before the attacker does.
+- **Key lost but a successor was pre-authorised:** if a planned successor address
+  was recorded out-of-band, follow the standard transfer procedure using the
+  successor's authorization only if that address already holds admin rights;
+  otherwise the transfer cannot be authorised.
 
-1. Researchers report vulnerabilities privately
-2. PERO-J maintainers acknowledge receipt and begin investigation
-3. A patch is developed and tested
-4. The fix is released, and the vulnerability is publicly disclosed after release
-5. Credit is given to the reporter (unless anonymity is requested)
+### Preventive measures
 
-We do not offer monetary bug bounties at this time, but we recognize responsible disclosures in release notes and on this page.
+- Store the admin key in a hardware wallet or a managed signer, never in plain
+  text or in CI.
+- Keep an offline, access-controlled record of the intended successor admin so a
+  transfer can be executed quickly if the primary key is compromised.
+- Monitor admin-related events so an unexpected `transfer_admin` is detected
+  immediately.
 
-## Security Best Practices
+## Indexer allowlist management
 
-### For Users
+The allowlist is a `Vec<Address>` stored under `DataKey::IndexerAllowlist`. It
+lists trusted indexer addresses permitted to submit events via `submit_event`.
+The admin is always permitted to submit regardless of the allowlist.
 
-- **Do not share your Stellar private keys** with any service, including PERO-J
-- Use testnet for exploratory transactions before mainnet deployment
-- Verify contract addresses before calling smart contracts
-- Monitor your wallet transactions regularly
+### Adding an indexer
 
-### For Developers
+1. Verify the indexer's public key out-of-band.
+2. Call `add_indexer(indexer)` with an auth envelope signed by the **admin**.
+3. The address is appended to the allowlist. The call fails with
+   `Error::LimitExceeded` if the allowlist already holds `MAX_INDEXERS` (20)
+   entries, and with `Error::AlreadyExists` if the address is already listed.
 
-- Review the contract code in `contract/` before integrating PERO-J ABIs
-- Test ABI decoders with known-good values before trusting decoded events
-- Keep dependencies up-to-date (`npm audit`, `cargo audit`)
-- Do not hardcode secrets in environment files; use a secure secrets manager
+### Removing an indexer
 
-## Security Audits
+1. Call `remove_indexer(indexer)` with an auth envelope signed by the **admin**.
+2. The address is removed from the allowlist and can no longer submit events.
+   The call fails with `Error::NotFound` if the address is not listed.
 
-PERO-J has not undergone a third-party security audit. The project is currently in **testnet development**. A formal audit is planned before mainnet deployment as outlined in [ROADMAP.md](ROADMAP.md).
+### Operational guidance
 
-## Contact
+- Keep the allowlist as small as possible; every listed address can write to
+  on-chain event storage.
+- Remove an indexer immediately if its key is suspected to be compromised.
+- Rotate indexer keys by adding the replacement before removing the old entry so
+  event submission is not interrupted.
 
-For non-security questions or general inquiries, please open a GitHub issue or discussion. For security matters, use the reporting methods above.
+## Reporting a vulnerability
 
----
-
-**Last Updated:** 2026-07-27  
-**Policy Version:** 1.0
+Do not open a public issue for security problems. Report them privately to the
+maintainers so a fix can be prepared before disclosure.

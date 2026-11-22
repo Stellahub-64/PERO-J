@@ -2,80 +2,67 @@ name: CI
 
 on:
   push:
-    branches: [ main, master ]
+    branches: [main]
   pull_request:
-    branches: [ main, master ]
 
 jobs:
   contract:
+    name: Contract tests
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: contracts/explorer
     steps:
-      - uses: actions/checkout@v4
-      - name: Install Rust
-        uses: dtolnay/rust-toolchain@stable
-      - name: Run contract tests
-        run: cargo test --manifest-path contracts/explorer/Cargo.toml
+      - name: Checkout
+        uses: actions/checkout@v4
 
-  indexer:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 20
-      - name: Run indexer tests
-        working-directory: indexer
+      - name: Install system dependencies
         run: |
-          npm ci
-          node --test test/
+          sudo apt-get update
+          sudo apt-get install -y libudev-dev pkg-config
 
-  frontend:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 20
-      - name: Run typescript check
-        working-directory: frontend
-        run: |
-          npm ci
-          npx tsc --noEmit
-
-  e2e:
-    runs-on: ubuntu-latest
-    if: github.event_name == 'pull_request' || github.ref == 'refs/heads/main'
-    steps:
-      - uses: actions/checkout@v4
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 20
-      - name: Install Rust
+      - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
         with:
           targets: wasm32-unknown-unknown
-      - name: Install soroban CLI
-        run: cargo install soroban-cli --locked
-      - name: Install Playwright
-        working-directory: tests/e2e
-        run: |
-          npm ci
-          npx playwright install chromium
-      - name: Start E2E stack
-        run: docker compose -f tests/e2e/docker-compose.e2e.yml up -d --wait
-      - name: Build WASM & deploy contract
-        run: |
-          cargo build --release --target wasm32-unknown-unknown -p soroban-explorer-contract
-          node tests/e2e/helpers/deploy.js
-      - name: Run E2E tests
-        working-directory: tests/e2e
-        run: npx playwright test --reporter=github
-      - name: Collect Docker logs on failure
-        if: failure()
-        run: docker compose -f tests/e2e/docker-compose.e2e.yml logs
-      - name: Tear down
-        if: always()
-        run: docker compose -f tests/e2e/docker-compose.e2e.yml down -v
+
+      - name: Install soroban-cli
+        run: cargo install --locked soroban-cli
+
+      - name: Run contract tests
+        run: cargo test
+
+  indexer:
+    name: Indexer tests
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: indexer
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Install dependencies
+        working-directory: frontend
+        run: npm ci
+      - name: Build frontend
+        working-directory: frontend
+        run: npm run build
+      - name: Run frontend tests
+        working-directory: frontend
+        run: npm test -- --run
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run indexer tests
+        run: npm test

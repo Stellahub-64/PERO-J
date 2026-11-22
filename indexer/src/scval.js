@@ -51,7 +51,7 @@ export function scValToJs(val) {
 
     case "scvI128": {
       const i = val.i128();
-      const hiB = BigInt.asUintN(64, BigInt(i.hi().toString()));
+      const hiB = BigInt(i.hi().toString());
       const loB = BigInt.asUintN(64, BigInt(i.lo().toString()));
       return BigInt.asIntN(128, (hiB << 64n) | loB);
     }
@@ -67,7 +67,7 @@ export function scValToJs(val) {
 
     case "scvI256": {
       const i = val.i256();
-      const hiHiB = BigInt.asUintN(64, BigInt(i.hiHi().toString()));
+      const hiHiB = BigInt(i.hiHi().toString());
       const hiLoB = BigInt.asUintN(64, BigInt(i.hiLo().toString()));
       const loHiB = BigInt.asUintN(64, BigInt(i.loHi().toString()));
       const loLoB = BigInt.asUintN(64, BigInt(i.loLo().toString()));
@@ -108,13 +108,13 @@ export function scValToJs(val) {
     }
 
     case "scvLedgerKeyContractInstance":
-      return "<contract-instance>";
+      return "";
 
     case "scvLedgerKeyNonce":
       return `<nonce:${BigInt(val.nonceKey().nonce().toString())}>`;
 
     case "scvContractInstance":
-      return "<contract-instance>";
+      return "";
 
     default:
       return String(val);

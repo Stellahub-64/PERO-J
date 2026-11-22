@@ -1,12 +1,18 @@
-import { useState } from "react";
+import React, { useState } from "react";
 import { Link } from "react-router-dom";
 import type { DecodedEvent } from "../api";
 
 interface Props {
   events: DecodedEvent[];
+  emptyMessage?: string;
+  emptySubtitle?: string;
 }
 
-export default function EventTable({ events }: Props) {
+export default function EventTable({
+  events,
+  emptyMessage = "No events found.",
+  emptySubtitle = "Register your contract to start decoding events",
+}: Props) {
   const [expandedSeq, setExpandedSeq] = useState<number | null>(null);
   if (!events.length) {
     return (
@@ -27,18 +33,18 @@ export default function EventTable({ events }: Props) {
           <path d="M12 22.08V12" />
         </svg>
         <p style={{ fontSize: 16, fontWeight: 500, color: "var(--text)", marginBottom: 8 }}>
-          No events found.
+          {emptyMessage}
         </p>
         <p style={{ fontSize: 14, color: "var(--muted)" }}>
-          Register your contract to start decoding events
+          {emptySubtitle}
         </p>
       </div>
     );
   }
 
   return (
-    <div style={{ overflowX: "auto" }}>
-      <table style={{ width: "100%", borderCollapse: "collapse" }}>
+    <div style={{ overflowX: "auto", WebkitOverflowScrolling: "touch", maxWidth: "100%" }}>
+      <table style={{ width: "100%", minWidth: 560, borderCollapse: "collapse" }}>
         <thead>
           <tr style={{ borderBottom: "1px solid var(--border)", color: "var(--muted)" }}>
             <th style={th}>Seq</th>
@@ -52,8 +58,8 @@ export default function EventTable({ events }: Props) {
             const isExpanded = expandedSeq === ev.seq;
             const isLongDescription = ev.description.length > 60;
             return (
-              <>
-                <tr key={`row-${ev.seq}`} style={{ borderBottom: "1px solid var(--border)" }}>
+              <React.Fragment key={ev.seq}>
+                <tr style={{ borderBottom: "1px solid var(--border)" }}>
                   <td style={td}>
                     <Link to={`/event/${ev.seq}`}>#{ev.seq}</Link>
                   </td>
@@ -69,19 +75,38 @@ export default function EventTable({ events }: Props) {
                       textOverflow: isExpanded ? "clip" : "ellipsis",
                       whiteSpace: isExpanded ? "normal" : "nowrap",
                       wordBreak: isExpanded ? "break-word" : "normal",
-                      cursor: isLongDescription ? "pointer" : "default",
                     }}
                     title={ev.description}
-                    onClick={() => isLongDescription && setExpandedSeq(isExpanded ? null : ev.seq)}
                   >
-                    {ev.description}
-                    {isLongDescription && !isExpanded && (
-                      <span style={{ marginLeft: 8, color: "var(--muted)", fontSize: 12 }}>…</span>
+                    <span>{ev.description}</span>
+                    {isLongDescription && (
+                      <button
+                        type="button"
+                        aria-expanded={isExpanded}
+                        aria-label={isExpanded ? "Collapse description" : "Expand description"}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setExpandedSeq(isExpanded ? null : ev.seq);
+                        }}
+                        style={{
+                          marginLeft: 8,
+                          padding: "2px 6px",
+                          fontSize: 10,
+                          cursor: "pointer",
+                          background: "none",
+                          border: "1px solid var(--border)",
+                          borderRadius: 4,
+                          color: "var(--muted)",
+                          lineHeight: 1,
+                        }}
+                      >
+                        {isExpanded ? "▲" : "▼"}
+                      </button>
                     )}
                   </td>
                 </tr>
                 {isExpanded && isLongDescription && (
-                  <tr key={`expand-${ev.seq}`} style={{ borderBottom: "1px solid var(--border)", backgroundColor: "var(--bg-secondary)" }}>
+                  <tr style={{ borderBottom: "1px solid var(--border)", backgroundColor: "var(--bg-secondary)" }}>
                     <td colSpan={4} style={{ ...td, padding: 16 }}>
                       <div style={{ color: "var(--muted)", fontSize: 12, marginBottom: 8 }}>Full description:</div>
                       <div style={{ fontFamily: "monospace", fontSize: 12, wordBreak: "break-word", whiteSpace: "pre-wrap" }}>
@@ -90,7 +115,7 @@ export default function EventTable({ events }: Props) {
                     </td>
                   </tr>
                 )}
-              </>
+              </React.Fragment>
             );
           })}
         </tbody>
@@ -99,5 +124,5 @@ export default function EventTable({ events }: Props) {
   );
 }
 
-const th: React.CSSProperties = { textAlign: "left", padding: "8px 12px", fontWeight: 500 };
+const th: React.CSSProperties = { textAlign: "left", padding: "8px 12px", fontWeight: 500, whiteSpace: "nowrap" };
 const td: React.CSSProperties = { padding: "10px 12px" };

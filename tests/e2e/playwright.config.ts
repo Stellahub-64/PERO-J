@@ -24,7 +24,7 @@ export default defineConfig({
     },
   ],
   use: {
-    baseURL: "http://localhost:5173",
+    baseURL: process.env.FRONTEND_URL || "http://localhost:5173",
     headless: true,
     screenshot: "only-on-failure",
   },

@@ -14,9 +14,15 @@ import { Asset, Contract, Networks } from "@stellar/stellar-sdk";
 function buildSacMap(assets) {
   const networkPassphrase = process.env.NETWORK_PASSPHRASE || Networks.TESTNET;
   const map = new Map();
-  for (const { code, issuer } of assets) {
+  for (const entry of assets) {
+    let code;
+    let issuer;
     try {
-      const asset = issuer ? new Asset(code, issuer) : Asset.native();
+      if (!entry || typeof entry !== "object" || Array.isArray(entry)) {
+        throw new TypeError("expected an asset object");
+      }
+      ({ code, issuer } = entry);
+      const asset = code === "native" && !issuer ? Asset.native() : new Asset(code, issuer);
       const contractId = new Contract(asset.contractId(networkPassphrase)).contractId();
       map.set(contractId, issuer ? code : "XLM");
     } catch (err) {
@@ -41,8 +47,8 @@ function getKnownAssets() {
       if (Array.isArray(parsed)) {
         customAssets = parsed;
       }
-    } catch {
-      // skip malformed SAC_ASSETS JSON
+    } catch (err) {
+      console.error('[sac] SAC_ASSETS is not valid JSON:', err.message);
     }
   }
   return [{ code: "native" }, ...customAssets];

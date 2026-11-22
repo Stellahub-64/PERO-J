@@ -10,6 +10,7 @@
  *  3. Execution errors       → treated as "present" (function exists, rejected dummy args)
  *  4. Mixed presence         → compliant: false, only present ones true
  *  5. Return shape guarantees
+ *  6. mapWithConcurrency resolves false on mapper errors (no array holes)
  */
 
 import { describe, it } from "node:test";
@@ -41,7 +42,11 @@ SorobanRpc.Server.prototype.simulateTransaction = async function (_tx) {
   return simSuccess();
 };
 
-import { validateSep41 } from "../src/validateSep41.js";
+import {
+  validateSep41,
+  mapWithConcurrency,
+  isMissingFunctionError,
+} from "../src/validateSep41.js";
 
 const CONTRACT_ID = "CDLZFC3SYJYDZT7K67VZ75HPJVIEUVNIXF47ZG2FB2RMQQVU2HHGCYSC";
 
@@ -51,6 +56,17 @@ const ALL_SEP41_FUNCTIONS = [
 ];
 
 // ── tests ─────────────────────────────────────────────────────────────────────
+
+describe("isMissingFunctionError()", () => {
+  it("matches host-style fn_not_found errors", () => {
+    assert.equal(isMissingFunctionError("HostError: fn_not_found"), true);
+  });
+
+  it("does not misclassify non-function errors", () => {
+    assert.equal(isMissingFunctionError("contract error: unauthorized"), false);
+    assert.equal(isMissingFunctionError("HostError: underflow"), false);
+  });
+});
 
 describe("validateSep41() — fully compliant contract", () => {
   it("returns compliant: true when all 10 functions succeed", async () => {
@@ -120,5 +136,100 @@ describe("validateSep41() — return shape", () => {
     _stubbedSimulate = () => simSuccess();
     const { results } = await validateSep41(CONTRACT_ID);
     assert.equal(Object.keys(results).length, 10);
+  });
+});
+
+describe("mapWithConcurrency() — mapper errors resolve instead of leaving holes", () => {
+  it("resolves false for every slot when the mapper throws", async () => {
+    const results = await mapWithConcurrency([1, 2, 3, 4], 2, async () => {
+      throw new Error("boom");
+    });
+
+    assert.equal(results.length, 4);
+    assert.deepEqual(results, [false, false, false, false]);
+  });
+
+  it("leaves no holes in the result array", async () => {
+    const results = await mapWithConcurrency([1, 2, 3, 4, 5], 3, async (n) => {
+      if (n % 2 === 0) throw new Error("even");
+      return true;
+    });
+
+    // Holes are skipped by every(); a dense array is what makes every() reliable.
+    assert.equal(results.length, 5);
+    for (let i = 0; i < results.length; i += 1) {
+      assert.ok(i in results, `hole at index ${i}`);
+      assert.equal(typeof results[i], "boolean");
+    }
+    assert.deepEqual(results, [true, false, true, false, true]);
+  });
+
+  it("does not reject when a mapper throws", async () => {
+    await assert.doesNotReject(() => mapWithConcurrency([1], 1, async () => {
+      throw new Error("boom");
+    }));
+  });
+});
+
+describe("every(Boolean) — false values are not treated as compliant", () => {
+  it("returns false for an array containing false", () => {
+    assert.equal([true, false, true].every(Boolean), false);
+  });
+
+  it("returns true for an all-true array", () => {
+    assert.equal([true, true, true].every(Boolean), true);
+  });
+
+  it("a failing check makes the contract non-compliant", async () => {
+    _stubbedSimulate = () => {
+      throw new Error("network down");
+    };
+    const { compliant, results } = await validateSep41(CONTRACT_ID);
+    assert.equal(compliant, false);
+    assert.ok(Object.values(results).every((v) => v === false));
+  });
+});
+
+describe("mapWithConcurrency() — mapper error handling", () => {
+  it("fills every slot even when the mapper throws for some items", async () => {
+    // Mapper succeeds for the first two items and throws for the rest.
+    const results = await mapWithConcurrency(
+      [1, 2, 3, 4, 5],
+      2,
+      async (item) => {
+        if (item <= 2) return true;
+        throw new Error("boom");
+      }
+    );
+
+    assert.equal(results.length, 5, "results should have one slot per item");
+    assert.ok(
+      results.every((v) => v !== undefined),
+      "no slot should be left undefined"
+    );
+    assert.deepEqual(results, [true, true, false, false, false]);
+    assert.equal(results.every(Boolean), false, "non-compliant should be detected");
+  });
+
+  it("keeps concurrency bounded even when workers throw", async () => {
+    let active = 0;
+    let maxActive = 0;
+    const results = await mapWithConcurrency(
+      [1, 2, 3, 4, 5, 6],
+      3,
+      async (item) => {
+        active++;
+        maxActive = Math.max(maxActive, active);
+        try {
+          if (item % 2 === 0) throw new Error("err");
+          return true;
+        } finally {
+          active--;
+        }
+      }
+    );
+
+    assert.ok(maxActive <= 3, `concurrency should not exceed limit (got ${maxActive})`);
+    assert.deepEqual(results, [true, false, true, false, true, false]);
   });
 });

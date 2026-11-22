@@ -1,0 +1,66 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: pero-indexer
+  labels:
+    app.kubernetes.io/name: pero-j
+    app.kubernetes.io/component: indexer
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: pero-j
+      app.kubernetes.io/component: indexer
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: pero-j
+        app.kubernetes.io/component: indexer
+    spec:
+      containers:
+        - name: indexer
+          image: pero-j-indexer:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 3001
+          envFrom:
+            - configMapRef:
+                name: pero-config
+            - secretRef:
+                name: pero-secrets
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 15
+            periodSeconds: 20
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "128Mi"
+            limits:
+              cpu: "500m"
+              memory: "512Mi"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: pero-indexer
+  labels:
+    app.kubernetes.io/name: pero-j
+    app.kubernetes.io/component: indexer
+spec:
+  selector:
+    app.kubernetes.io/name: pero-j
+    app.kubernetes.io/component: indexer
+  ports:
+    - name: http
+      port: 3001
+      targetPort: http

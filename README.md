@@ -68,7 +68,8 @@ PERO-J decodes contract calls on the fly using an ABI-like metadata registry, tu
 git clone https://github.com/PERO-J
 cd PERO-J
 cp .env.example .env
-# Edit .env with your RPC URL and DATABASE_URL
+# Edit .env with your RPC URL and DATABASE_URL. See [.env.example](.env.example)
+# for all supported indexer, database, contract, and SEP-41 settings.
 ```
 
 ### 2. Build & deploy the contract
@@ -80,6 +81,9 @@ make deploy     # deploy to testnet, prints CONTRACT_ID
 Copy the printed contract ID into `.env` as `EXPLORER_CONTRACT_ID`.
 
 ### 3. Start the indexer + API
+
+The indexer validates `NETWORK_PASSPHRASE` on startup by querying the RPC endpoint. If the configured passphrase does not match the RPC-reported network, the indexer logs an error and exits with code 1. This prevents mainnet/testnet mix-ups.
+
 ```bash
 make indexer-install
 make indexer
@@ -97,6 +101,34 @@ Or run both together:
 make install
 make dev
 ```
+
+---
+
+## Docker Compose (local development)
+
+Skip the manual PostgreSQL setup and `.env` wiring by running the whole stack
+(`postgres`, `indexer`, and `frontend`) with Docker Compose:
+
+```bash
+make dev-docker
+```
+
+This is equivalent to `docker compose up --build` and starts:
+
+| Service | Port | Notes |
+|---------|------|-------|
+| `postgres` | `5432` | Data persisted in the `postgres-data` volume |
+| `indexer` | `3001` | REST API; waits for Postgres to be healthy |
+| `frontend` | `5173` | Vite dev server, points at the indexer |
+
+`DATABASE_URL` is injected into the `indexer` service via the compose
+environment (defaulting to `postgres://peroj:peroj@postgres:5432/peroj`).
+Override it — along with `RPC_URL`, `NETWORK_PASSPHRASE`, `EXPLORER_CONTRACT_ID`,
+and `API_ADMIN_KEY` — by exporting the variables or placing them in a `.env`
+file next to `docker-compose.yml` before running `make dev-docker`.
+
+Stop the stack with `docker compose down` (add `-v` to also drop the database
+volume).
 
 ---
 
@@ -127,18 +159,27 @@ The `update` topic lets the indexer invalidate its ABI cache without polling sto
 
 | Endpoint | Description |
 |----------|-------------|
-| `GET /health` | Liveness + lag probe — returns `lag_seconds`, `uptime_seconds`, `last_ledger`. HTTP 200 when healthy, 503 when `lag_seconds > 30`. |
+| `GET /health` | Liveness + lag probe — returns `lag_seconds`, `uptime_seconds`, `last_ledger`. HTTP 200 when healthy, 503 when `lag_seconds > LAG_ALERT_THRESHOLD_S` (default 30). |
 | `GET /api/events?contract=&fn=&page=` | Paginated event list: `{ events, total, page, limit }` |
 | `GET /api/events/:seq` | Single event |
+| `GET /api/events/:seq/raw` | Raw un-decoded event topics and data: `{ seq, raw_topics, raw_data, tx_hash }` |
 | `GET /api/contracts/:id` | Contract ABI metadata |
+| `GET /api/contracts/:id/events?fn=&page=` | Paginated event list for contract: `{ events, total, page, limit }` |
 | `POST /api/contracts` | Register contract metadata |
+| `DELETE /api/contracts/:id` | Remove contract ABI metadata (requires `Authorization: Bearer <API_ADMIN_KEY>`) |
 | `GET /api/wallet/:address` | Wallet event history |
 | `GET /api/tokens/:id/volume?decimals=` | 24-hour rolling transfer volume for a SEP-41 token. Optional `decimals` query param (integer 0–38) overrides the on-chain metadata lookup. |
 
-PostgreSQL `events.seq` is the canonical REST/frontend identifier. On-chain
-`EventSeq` values are stored separately as nullable `onchain_seq` values because
-the database row sequence and contract submission sequence are different
-namespaces and can diverge.
+### Event sequence namespaces
+
+The `events` table tracks two distinct sequence numbers:
+
+| Column | Type | Description |
+|--------|------|-------------|
+| `seq` | `BIGSERIAL` (PK) | Auto-increment database sequence. The canonical identifier used by the REST API and frontend (e.g. `GET /api/events/:seq`). Always present. |
+| `onchain_seq` | `BIGINT` (nullable) | The `EventSeq` value returned by the on-chain `ExplorerContract` after a successful submission. `NULL` when the event was not submitted or the submission failed. |
+
+These two namespaces are **independent** and will diverge over time — not every database row has a corresponding on-chain submission, and on-chain sequence numbers are scoped to the contract, not the database. Always use `seq` to reference events in API calls and frontend URLs.
 
 ### Volume endpoint
 
@@ -166,7 +207,7 @@ Example response:
 
 Configure an external monitor (UptimeRobot, Better Uptime, or similar) to call
 `GET /health` every **60 seconds** and alert when the response is HTTP 503 **or**
-`lag_seconds > 30`.  This satisfies ROADMAP Tranche 2 deliverable 2.7 (< 10 s
+`lag_seconds > LAG_ALERT_THRESHOLD_S` (default `30`).  This satisfies ROADMAP Tranche 2 deliverable 2.7 (< 10 s
 index lag under normal load, alert threshold 30 s).
 
 Example healthy response:
@@ -192,7 +233,7 @@ Example degraded response (HTTP 503):
 ```
 
 Override the alert threshold via the `LAG_ALERT_THRESHOLD_S` environment variable
-(default `30`).
+(default `30`). Non-numeric values fall back to the default of `30`.
 
 ---
 
@@ -205,14 +246,7 @@ The decoder recognises SEP-41 token events (`transfer`, `mint`, `burn`) and form
 ## Validated Need & Traction
 
 - **Confirmed gap:** StellarExpert and Stellar.expert (the two primary Stellar explorers) show
-  raw XDR bytes for all Soroban contract events as of May 2026 — no human-readable decoding exists.
-- **Community signal:** Developers in `#soroban-dev` on Stellar Discord regularly ask how to
-  inspect their own contract events in a readable form. No existing tool answers this.
-- **Comparable success:** Etherscan's ABI decoder is one of its most-used features. Solscan
-  built the same for Solana and became the primary explorer for Solana DeFi. Stellar has no
-  equivalent for Soroban.
-- **Target users:** Soroban dApp developers, DeFi users, NFT traders, auditors — anyone who
-  needs to understand what is happening on-chain.
+  raw XDR bytes for all Soroban contract events as of May 2026 — no human-readable 
 
 ---
 
@@ -356,6 +390,23 @@ PRs welcome. Please open an issue first for large changes.
 
 ---
 
+## Note to maintainers
+
+- Issue #792: `EventPage` already validates the `seq` param (`isValidSeq`) and skips the API request for invalid values; no code change needed.
+- Issue #793: `CopyButton` already accepts an `ariaLabel` prop applied as `aria-label`, and all usages pass labels; no code change needed.
+- Issue #794: `Skeleton` already supports `variant="table"` and `"card"` and is used in `Home`, `ContractPage` and `WalletPage`; no code change needed.
+- Issue #795: `Home.tsx` already debounces the search query (300ms, cleared on unmount) via `debouncedSearchQuery`; no code change needed.
+
+---
+
 ## License
 
 [MIT](LICENSE)
+
+## Handsoff notes
+
+<!-- handsoff-issue-850 -->
+- #850: Implement `transfer_admin` requiring both parties to sign
+
+<!-- handsoff-issue-745 -->
+- #745: `init()` must be permanently irreversible after first call

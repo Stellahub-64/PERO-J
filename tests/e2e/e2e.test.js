@@ -1,7 +1,7 @@
 import { test, expect } from "@playwright/test";
 import { setup } from "./helpers/deploy.js";
 
-const API_BASE = "http://localhost:3001";
+const API_BASE = process.env.INDEXER_URL || "http://localhost:3001";
 
 test.describe("Full pipeline: contract → indexer → API → frontend", () => {
   let contractId;
@@ -24,7 +24,7 @@ test.describe("Full pipeline: contract → indexer → API → frontend", () => 
     expect(body.events.length).toBeGreaterThanOrEqual(1);
 
     const ev = body.events[0];
-    expect(ev.contract_id).toBeDefined();
+    expect(ev.contract_id).toBe(contractId);
     expect(ev.function).toBeDefined();
     expect(ev.description).toBeDefined();
     expect(ev.ledger).toBeGreaterThan(0);
@@ -64,17 +64,11 @@ test.describe("Full pipeline: contract → indexer → API → frontend", () => 
   });
 
   test("Frontend renders event description in the table", async ({ page }) => {
-    /* Fetch the most recent event description from the API */
-    const res = await fetch(`${API_BASE}/api/events?limit=1`);
-    const body = await res.json();
-    const description = body.events[0].description;
-
     await page.goto("/");
     await page.waitForSelector("table tbody tr", { timeout: 30_000 });
 
-    /* The description should be visible somewhere in the table body */
-    const cell = page.locator(`table tbody tr td:has-text("${description}")`);
-    await expect(cell.first()).toBeVisible();
+    /* The exact seeded description proves decoding reached the UI. */
+    await expect(page.locator("table tbody")).toContainText(eventDescription);
   });
 
   test("Frontend event detail page shows full event data", async ({ page }) => {

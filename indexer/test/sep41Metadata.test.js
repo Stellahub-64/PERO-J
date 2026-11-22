@@ -43,10 +43,10 @@ SorobanRpc.Server.prototype.simulateTransaction = async function (_tx) {
 // Import after patching
 import { fetchTokenMetadata } from "../src/sep41Metadata.js";
 
-// Valid contract IDs derived from deterministic seeds 10-15.
+// Valid contract IDs derived from deterministic seeds 10-25.
 // Each test gets its own ID to avoid the module's internal cache leaking
-// between tests.
-const IDS = [10, 11, 12, 13, 14, 15].map((i) =>
+// between tests.  16 slots is enough for the current 7 tests plus future growth.
+const IDS = [10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25].map((i) =>
   StrKey.encodeContract(Buffer.alloc(32, i))
 );
 let _idIdx = 0;
@@ -72,6 +72,26 @@ describe("fetchTokenMetadata()", () => {
     assert.equal(meta.name, "USD Coin");
     assert.equal(meta.symbol, "USDC");
     assert.equal(meta.decimals, 6);
+  });
+
+  it("retries with sequence 1 when source account lookup fails", async () => {
+    let calls = 0;
+    _stubbedSimulate = async () => {
+      calls += 1;
+      if (calls === 1) {
+        return { error: "sourceAccountNotFound" };
+      }
+      if (calls === 4) {
+        return simOk(scvString("USDC"));
+      }
+      return simOk(scvVoid());
+    };
+
+    const meta = await fetchTokenMetadata(nextId());
+    assert.equal(meta.name, "USDC");
+    assert.equal(meta.symbol, "");
+    assert.equal(meta.decimals, 7);
+    assert.equal(calls, 4);
   });
 
   it("coerces void returns to empty string / default 7 decimals", async () => {

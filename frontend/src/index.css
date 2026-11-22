@@ -10,6 +10,7 @@
   --green: #1a7f37;
   --yellow: #9a6700;
   --red: #cf222e;
+  color-scheme: light;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -25,6 +26,20 @@
     --red: #f85149;
   }
 }
+
+:root[data-theme="dark"] {
+  --bg: #0d1117;
+  --surface: #161b22;
+  --border: #30363d;
+  --accent: #58a6ff;
+  --text: #e6edf3;
+  --muted: #8b949e;
+  --green: #3fb950;
+  --yellow: #d29922;
+  color-scheme: dark;
+}
+
+html, body { max-width: 100%; overflow-x: hidden; }
 
 body { background: var(--bg); color: var(--text); font-family: system-ui, sans-serif; font-size: 14px; }
 
@@ -192,18 +207,18 @@ button:hover { opacity: 0.85; }
 /* Mobile responsive styles */
 @media (max-width: 600px) {
   body { font-size: 13px; }
-  
+
   input, select {
     width: 100%;
     padding: 8px 10px;
     font-size: 13px;
   }
-  
+
   button {
     padding: 8px 12px;
     font-size: 13px;
   }
-  
+
   .card {
     padding: 12px;
   }
@@ -228,5 +243,40 @@ button:hover { opacity: 0.85; }
   table th:nth-child(2),
   table td:nth-child(2) {
     display: none;
+}
+
+/* EventTable: allow horizontal scrolling on small screens instead of overflowing */
+.table-scroll {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.table-scroll table {
+  min-width: 640px;
+  width: 100%;
+  border-collapse: collapse;
+}
+
+/* Navigation: collapse to a stacked layout on mobile */
+.nav {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+@media (max-width: 600px) {
+  .nav {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+  }
+
+  .nav a,
+  .nav button {
+    width: 100%;
+    text-align: left;
   }
 }

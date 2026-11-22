@@ -76,6 +76,15 @@ make e2e-down
 | Contract metadata page | Navigate to `/contract/:id` and see the registered name |
 | Pagination controls | Prev/Next buttons exist; Prev is disabled on page 1 |
 
+## Environment Variables
+
+| Variable         | Default                                              | Description                         |
+|------------------|------------------------------------------------------|-------------------------------------|
+| `INDEXER_URL`    | `http://localhost:3001`                              | Base URL for the indexer API        |
+| `FRONTEND_URL`   | `http://localhost:5173`                              | Base URL for the frontend           |
+
+These variables allow the E2E tests and Playwright configuration to work both locally and inside Docker Compose. Inside the Compose network, services use container hostnames (e.g., `http://indexer:3001`, `http://frontend:5173`); locally they default to `localhost`.
+
 ## CI Integration
 
 The E2E suite runs as a separate job in `.github/workflows/ci.yml`:

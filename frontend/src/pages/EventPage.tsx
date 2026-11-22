@@ -5,12 +5,22 @@ import { api } from "../api";
 import Skeleton from "../components/Skeleton";
 import CopyButton from "../components/CopyButton";
 
-export default function EventPage() {
-  const { seq = "0" } = useParams();
+/** Returns true only when the string represents a non-negative integer. */
+function isValidSeq(value: string): boolean {
+  return /^\d+$/.test(value);
+}
 
-  const { data: ev, isLoading } = useQuery({
+export default function EventPage() {
+  const { seq = "" } = useParams();
+
+  const seqIsValid = isValidSeq(seq);
+  const seqNum = seqIsValid ? Number(seq) : NaN;
+
+  const { data: ev, isLoading, isError } = useQuery({
     queryKey: ["event", seq],
-    queryFn: () => api.event(Number(seq)),
+    queryFn: () => api.event(seqNum),
+    enabled: seqIsValid,
+    retry: false,
   });
 
   useEffect(() => {
@@ -21,8 +31,18 @@ export default function EventPage() {
     }
   }, [ev]);
 
-  if (isLoading) return <div className="card"><Skeleton rows={4} /></div>;
-  if (!ev) return <p>Event not found.</p>;
+  if (isLoading) return <div className="card"><Skeleton variant="card" rows={4} /></div>;
+  if (!seqIsValid || isError || !ev) {
+    return (
+      <div className="card" style={{ display: "grid", gap: 12 }}>
+        <h2 style={{ margin: 0 }}>404 — Event not found</h2>
+        <p style={{ color: "var(--muted)", margin: 0 }}>
+          No event exists for sequence <code>{seq || "(none)"}</code>.
+        </p>
+        <Link to="/">← Back to home</Link>
+      </div>
+    );
+  }
 
   const topics = ev.raw_topics ?? [];
 
@@ -35,10 +55,13 @@ export default function EventPage() {
         <Row label="Function"    value={ev.function} badge />
         <Row label="Ledger"      value={ev.ledger.toLocaleString()} />
         {ev.created_at && <Row label="Time" value={new Date(ev.created_at).toUTCString()} />}
-        <Row label="Contract" value={<Link to={`/contract/${ev.contract_id}`}>{ev.contract_id}</Link>} action={<CopyButton value={ev.contract_id} size="small" />} />
-        {ev.tx_hash && <Row label="Tx Hash" value={ev.tx_hash} mono action={<CopyButton value={ev.tx_hash} size="small" />} />}
-        {ev.raw_topics.length > 0 && (
-          <Row label="Topics" value={ev.raw_topics.join(", ")} mono />
+        <Row label="Contract" value={<Link to={`/contract/${ev.contract_id}`}>{ev.contract_id}</Link>} action={<CopyButton value={ev.contract_id} size="small" ariaLabel="Copy contract ID" />} />
+        {ev.tx_hash && <Row label="Tx Hash" value={ev.tx_hash} mono action={<CopyButton value={ev.tx_hash} size="small" ariaLabel="Copy transaction hash" />} />}
+        {topics.length > 0 && (
+          <Row label="Topics" value={topics.join(", ")} mono />
+        )}
+        {ev.raw_data && (
+          <Row label="Raw Data" value={ev.raw_data} mono />
         )}
       </div>
     </div>

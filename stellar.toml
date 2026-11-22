@@ -1,124 +1,20 @@
-# stellar.toml — PERO-J: Human-Readable Soroban Contract Events
-# SEP-1 Stellar Information File
-# https://stellar.org/protocol/sep-1
-#
-# This file is signed with SIGNING_KEY to verify authenticity.
-# Wallets and explorers use this to verify PERO-J's identity and contract metadata.
+# SEP-1 Stellar Info File
+# https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0001.md
 
-VERSION = "2.0.0"
+VERSION = "1.0.0"
 
-# NETWORK_PASSPHRASE identifies which Stellar network this file describes.
-# Testnet: "Test SDF Network ; September 2015"
-# Mainnet: "Public Global Stellar Network ; September 2015"
-NETWORK_PASSPHRASE = "Test SDF Network ; September 2015"
+NETWORK_PASSPHRASE = "Public Global Stellar Network ; September 2015"
 
-# SIGNING_KEY is the public key used to sign this stellar.toml file.
-# Replace GAXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXY with the
-# actual contract admin's public key after deployment.
-# Wallets verify the signature to confirm this file's authenticity.
-SIGNING_KEY = "GAXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXY"
-
-# ─────────────────────────────────────────────────────────────────────────────
-# DOCUMENTATION: Organization and service information
-# ─────────────────────────────────────────────────────────────────────────────
-
-[DOCUMENTATION]
-
-# ORG_NAME: Full legal or project name
+# Project name (SEP-1 ORG_NAME)
 ORG_NAME = "PERO-J"
+ORG_URL = "https://github.com/PERO-J"
+ORG_DESCRIPTION = "Human-readable PERO-J contract events on Stellar."
 
-# ORG_GITHUB: Repository URL
-ORG_GITHUB = "https://github.com/PERO-J/PERO-J"
-
-# ORG_DESCRIPTION: What is PERO-J?
-ORG_DESCRIPTION = "PERO-J decodes Soroban smart contract events into human-readable form. Instead of raw XDR bytes, users see: 'Address GABC… swapped 100 USDC → 98.7 XLM on StellarSwap at ledger #4521983.'"
-
-# ORG_URL: Primary website or documentation
-ORG_URL = "https://pero-j.dev"
-
-# ORG_LOGO: URL to organization logo (PNG/SVG, recommended 256×256)
-# ORG_LOGO = "https://pero-j.dev/logo.png"
-
-# ORG_OFFICIAL: Whether this is the official organization (not a fork/mirror)
-ORG_OFFICIAL = true
-
-# ORG_SUPPORT_EMAIL: Support contact email
-ORG_SUPPORT_EMAIL = "support@pero-j.dev"
-
-# ORG_TWITTER: Twitter handle (optional)
-# ORG_TWITTER = "pero_j_dev"
-
-# ─────────────────────────────────────────────────────────────────────────────
-# PRINCIPALS: Key team members (for verification and contact)
-# ─────────────────────────────────────────────────────────────────────────────
-
-[[PRINCIPALS]]
-
-# name: Principal's name or identifier
-name = "PERO-J Core Team"
-
-# email: Contact email for this principal
-email = "team@pero-j.dev"
-
-# github: GitHub username (for verification of authenticity)
-github = "PERO-J"
-
-# twitter: Twitter handle (optional)
-# twitter = "pero_j_dev"
-
-# key_hash: SHA-256 hash of the principal's GPG public key (optional, for signing authority)
-# Retrieve with: gpg --armor --export <email> | gpg --dearmor | sha256sum
-# key_hash = "abcdef1234567890..."
-
-# ─────────────────────────────────────────────────────────────────────────────
-# CONTRACTS: Soroban smart contracts deployed by PERO-J
-# ─────────────────────────────────────────────────────────────────────────────
-
-[[CONTRACTS]]
-
-# name: Human-readable name of the contract
-name = "ExplorerContract"
-
-# description: What does this contract do?
-description = "On-chain ABI-like metadata registry and decoded event store. Stores contract ABIs and persists human-readable decoded events on-chain."
-
-# contract_id: Stellar contract ID (string starting with 'C')
-# Obtain after deployment: stellar contract deploy ... (prints CONTRACT_ID)
-contract_id = "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
-
-# network: Which Stellar network is this contract deployed on?
-network = "testnet"
-
-# source_url: Link to the source code
-source_url = "https://github.com/PERO-J/PERO-J/tree/main/contract"
-
-# status: Deployment status
-status = "development"
-
-# ─────────────────────────────────────────────────────────────────────────────
-# CURRENCIES (Optional): If PERO-J issues or manages any assets
-# ─────────────────────────────────────────────────────────────────────────────
-
-# Currently, PERO-J does not issue its own assets.
-# This section can be added if a governance token is planned.
-# See SEP-1 documentation for CURRENCIES structure.
-
-# ─────────────────────────────────────────────────────────────────────────────
-# Signing Instructions
-# ─────────────────────────────────────────────────────────────────────────────
-#
-# After updating this file with the actual contract admin key:
-#
-# 1. Export the signing key's private key (testnet admin key):
-#    stellar keys show default --show-seed
-#
-# 2. Sign the stellar.toml file using SEP-10:
-#    stellar keys sign --public-key <admin-public-key> stellar.toml
-#
-# 3. Append the signature to the end of this file in the format:
-#    # Signature: <base64-signature>
-#
-# 4. Update SIGNING_KEY with the admin's public key.
-#
-# Note: For production (mainnet), use a dedicated signing key stored in hardware
-# or a key management service. Never hardcode or commit private keys.
+# Deployed PERO-J explorer contract on Stellar mainnet.
+# Set EXPLORER_CONTRACT_ID in .env to the value printed by `make deploy`.
+[[CURRENCIES]]
+code = "PEROJ"
+issuer = "GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWHF5"
+contract = "CCWAMYJME4H5CKG7OLXGC2T4M6FL52XCZ3OQOAV6LL3GLA4RO4WH3ASP"
+name = "PERO-J"
+desc = "PERO-J contract event decoder and ABI metadata registry."

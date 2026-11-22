@@ -8,8 +8,13 @@ import ContractPage from "./pages/ContractPage";
 import WalletPage from "./pages/WalletPage";
 import EventPage from "./pages/EventPage";
 import NotFound from "./pages/NotFound";
+import { useState } from 'react';
+import './App.css';
+import EventTable from './components/EventTable';
 
-export default function App() {
+function App() {
+  const [navOpen, setNavOpen] = useState(false);
+
   return (
     <ToastProvider>
       <Nav />
@@ -25,5 +30,31 @@ export default function App() {
         </main>
       </ErrorBoundary>
     </ToastProvider>
+    <div className="app">
+      <header className="app-header">
+        <div className="app-brand">Soroban Smart Block Explorer</div>
+        <button
+          type="button"
+          className="nav-toggle"
+          aria-label="Toggle navigation"
+          aria-expanded={navOpen}
+          onClick={() => setNavOpen((open) => !open)}
+        >
+          <span className="nav-toggle-bar" />
+          <span className="nav-toggle-bar" />
+          <span className="nav-toggle-bar" />
+        </button>
+        <nav className={`app-nav${navOpen ? ' app-nav--open' : ''}`}>
+          <a href="#events">Events</a>
+          <a href="#contracts">Contracts</a>
+          <a href="#ledgers">Ledgers</a>
+        </nav>
+      </header>
+      <main className="app-main">
+        <EventTable />
+      </main>
+    </div>
   );
 }
+
+export default App;

@@ -1,0 +1,72 @@
+name: Deploy contract to mainnet
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: write
+
+jobs:
+  deploy:
+    if: startsWith(github.event.release.tag_name, 'v')
+    runs-on: ubuntu-latest
+    env:
+      STELLAR_SECRET_KEY: ${{ secrets.STELLAR_SECRET_KEY }}
+    steps:
+      - name: Check out release
+        uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+
+      - name: Install Stellar CLI
+        run: cargo install stellar-cli --locked
+
+      - name: Build contract WASM
+        run: cargo build --target wasm32-unknown-unknown --release -p soroban-explorer-contract
+
+      - name: Configure deployer identity
+        run: stellar keys add deployer --secret-key "$STELLAR_SECRET_KEY"
+
+      - name: Deploy contract
+        id: deploy
+        run: |
+          test -n "$STELLAR_SECRET_KEY"
+          contract_id=$(stellar contract deploy \
+            --wasm target/wasm32-unknown-unknown/release/soroban_explorer_contract.wasm \
+            --source deployer \
+            --network mainnet)
+          echo "contract_id=$contract_id" >> "$GITHUB_OUTPUT"
+
+      - name: Add contract ID to release notes
+        env:
+          GH_TOKEN: ${{ github.token }}
+          CONTRACT_ID: ${{ steps.deploy.outputs.contract_id }}
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+        run: |
+          notes=$(gh release view "$RELEASE_TAG" --json body --jq .body)
+          notes="$notes"$'\n\nMainnet contract ID: '
+          gh release edit "$RELEASE_TAG" --notes "$notes$CONTRACT_ID"
+
+  indexer-tests:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: indexer
+    steps:
+      - name: Check out release
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run indexer tests
+        run: npm test
