@@ -2,6 +2,7 @@ import { Routes, Route } from "react-router-dom";
 import Nav from "./components/Nav";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { ToastProvider } from "./components/Toast";
+import OnChainModeBanner from "./components/OnChainModeBanner";
 import Home from "./pages/Home";
 import BetsPage from "./pages/BetsPage";
 import ContractPage from "./pages/ContractPage";
@@ -13,6 +14,7 @@ export default function App() {
   return (
     <ToastProvider>
       <Nav />
+      <OnChainModeBanner />
       <ErrorBoundary>
         <main style={{ maxWidth: 1100, margin: "0 auto", padding: "24px 16px" }}>
           <Routes>

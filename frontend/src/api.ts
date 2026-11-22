@@ -1,3 +1,13 @@
+import { fetchWithFallback } from "./lib/api-client";
+import {
+  fetchContractFromRpc,
+  fetchDistinctFunctionsFromRpc,
+  fetchEventByTxHashFromRpc,
+  fetchEventFromRpc,
+  fetchEventsFromRpc,
+  fetchWalletEventsFromRpc,
+} from "./lib/rpc-fallback";
+
 const BASE = import.meta.env.VITE_API_URL || "/api";
 
 export interface DecodedEvent {
@@ -36,24 +46,6 @@ export interface EventsResponse {
   limit: number;
 }
 
-async function get<T>(path: string): Promise<T> {
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 10000);
-
-  try {
-    const res = await fetch(BASE + path, { signal: controller.signal });
-    if (!res.ok) throw new Error(`API ${res.status}: ${path}`);
-    return res.json();
-  } catch (error) {
-    if (error instanceof Error && error.name === "AbortError") {
-      throw new Error("Request timed out");
-    }
-    throw error;
-  } finally {
-    clearTimeout(timeout);
-  }
-}
-
 async function post<T>(path: string, body: unknown): Promise<T> {
   const res = await fetch(BASE + path, {
     method: "POST",
@@ -65,18 +57,32 @@ async function post<T>(path: string, body: unknown): Promise<T> {
 }
 
 export const api = {
-  distinctFunctions: () => get<string[]>("/functions"),
+  distinctFunctions: () =>
+    fetchWithFallback<string[]>("/functions", fetchDistinctFunctionsFromRpc),
   events: (params: { contract?: string; fn?: string; q?: string; page?: number }) => {
     const q = new URLSearchParams();
     if (params.contract) q.set("contract", params.contract);
     if (params.fn)       q.set("fn", params.fn);
     if (params.q)        q.set("q", params.q);
     if (params.page)     q.set("page", String(params.page));
-    return get<EventsResponse>(`/events?${q}`);
+    return fetchWithFallback<EventsResponse>(
+      `/events?${q}`,
+      () => fetchEventsFromRpc(params)
+    );
   },
-  event:            (seq: number)                         => get<DecodedEvent>(`/events/${seq}`),
-  eventByTxHash:    (hash: string)                        => get<DecodedEvent | null>(`/events/by-tx/${encodeURIComponent(hash)}`),
-  contract:         (id: string)                          => get<ContractMeta>(`/contracts/${id}`),
-  wallet:           (address: string, page: number = 1)   => get<WalletEventsResponse>(`/wallet/${address}?page=${page}`),
-  registerContract: (meta: ContractMeta)                  => post<{ ok: boolean }>("/contracts", meta),
+  event: (seq: number) =>
+    fetchWithFallback<DecodedEvent>(`/events/${seq}`, () => fetchEventFromRpc(seq)),
+  eventByTxHash: (hash: string) =>
+    fetchWithFallback<DecodedEvent | null>(
+      `/events/by-tx/${encodeURIComponent(hash)}`,
+      () => fetchEventByTxHashFromRpc(hash)
+    ),
+  contract: (id: string) =>
+    fetchWithFallback<ContractMeta>(`/contracts/${id}`, () => fetchContractFromRpc(id)),
+  wallet: (address: string, page: number = 1) =>
+    fetchWithFallback<WalletEventsResponse>(
+      `/wallet/${address}?page=${page}`,
+      () => fetchWalletEventsFromRpc(address, page)
+    ),
+  registerContract: (meta: ContractMeta) => post<{ ok: boolean }>("/contracts", meta),
 };

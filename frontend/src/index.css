@@ -216,7 +216,16 @@ button:hover { opacity: 0.85; }
     grid-template-columns: 1fr;
   }
 
-  .toast-stack {
+.onchain-banner {
+  padding: 6px 16px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  color: var(--yellow);
+  font-size: 12px;
+  text-align: center;
+}
+
+.toast-stack {
     left: 16px;
     right: 16px;
     max-width: none;
