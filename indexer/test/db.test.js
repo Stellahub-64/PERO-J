@@ -145,6 +145,29 @@ describe("db.getEvent()", () => {
   });
 });
 
+describe("db.getEventByTxHash()", () => {
+  beforeEach(() => resetMock());
+
+  it("returns null when no transaction hash matches", async () => {
+    const result = await db.getEventByTxHash("deadbeef");
+    assert.equal(result, null);
+  });
+
+  it("returns the matching event", async () => {
+    _nextRow = { seq: 7, tx_hash: "deadbeef", function: "place_bet" };
+    const result = await db.getEventByTxHash("deadbeef");
+    assert.equal(result.seq, 7);
+    assert.equal(result.function, "place_bet");
+  });
+
+  it("queries by tx_hash parameter", async () => {
+    await db.getEventByTxHash("deadbeef");
+    const { sql, params } = lastCall();
+    assert.ok(sql.includes("tx_hash"));
+    assert.ok(params.includes("deadbeef"));
+  });
+});
+
 describe("db.getEvents()", () => {
   beforeEach(() => resetMock());
 

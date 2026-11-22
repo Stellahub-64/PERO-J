@@ -9,6 +9,7 @@
   --muted: #57606a;
   --green: #1a7f37;
   --yellow: #9a6700;
+  --red: #cf222e;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -21,6 +22,7 @@
     --muted: #8b949e;
     --green: #3fb950;
     --yellow: #d29922;
+    --red: #f85149;
   }
 }
 
@@ -70,6 +72,123 @@ button:hover { opacity: 0.85; }
 .badge.green { background: #1a3a22; color: var(--green); }
 .badge.yellow { background: #3a2e0a; color: var(--yellow); }
 
+.toast-stack {
+  position: fixed;
+  right: 16px;
+  bottom: 16px;
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-width: min(360px, calc(100vw - 32px));
+}
+
+.toast {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-left-width: 4px;
+  border-radius: 8px;
+  background: var(--surface);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
+}
+
+.toast-success { border-left-color: var(--green); }
+.toast-error { border-left-color: var(--red); }
+.toast-info { border-left-color: var(--accent); }
+
+.toast button {
+  padding: 0 4px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 18px;
+  line-height: 1;
+}
+
+.spinner {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  flex: none;
+  border: 2px solid var(--border);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+
+.spinner-small {
+  width: 10px;
+  height: 10px;
+  margin-right: 4px;
+  vertical-align: -1px;
+  border-width: 1px;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.odds-preview {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+
+.odds-label {
+  flex: 1;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.odds-value {
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.odds-pending { border-color: var(--accent); }
+.odds-confirmed { border-color: var(--green); }
+.odds-failed { border-color: var(--red); }
+
+.bet-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 20px;
+  align-items: start;
+}
+
+.bet-history {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.bet-history-row {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(120px, 1fr) minmax(120px, 1fr);
+  gap: 12px;
+  align-items: center;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border);
+}
+
+.bet-history-row:last-child {
+  padding-bottom: 0;
+  border-bottom: none;
+}
+
+.bet-history-hash {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  font-size: 12px;
+}
+
 /* Mobile responsive styles */
 @media (max-width: 600px) {
   body { font-size: 13px; }
@@ -87,6 +206,20 @@ button:hover { opacity: 0.85; }
   
   .card {
     padding: 12px;
+  }
+
+  .bet-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .bet-history-row {
+    grid-template-columns: 1fr;
+  }
+
+  .toast-stack {
+    left: 16px;
+    right: 16px;
+    max-width: none;
   }
   
   /* Hide secondary table columns on mobile */

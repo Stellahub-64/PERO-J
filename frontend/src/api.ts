@@ -75,6 +75,7 @@ export const api = {
     return get<EventsResponse>(`/events?${q}`);
   },
   event:            (seq: number)                         => get<DecodedEvent>(`/events/${seq}`),
+  eventByTxHash:    (hash: string)                        => get<DecodedEvent | null>(`/events/by-tx/${encodeURIComponent(hash)}`),
   contract:         (id: string)                          => get<ContractMeta>(`/contracts/${id}`),
   wallet:           (address: string, page: number = 1)   => get<WalletEventsResponse>(`/wallet/${address}?page=${page}`),
   registerContract: (meta: ContractMeta)                  => post<{ ok: boolean }>("/contracts", meta),

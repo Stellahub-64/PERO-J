@@ -104,6 +104,14 @@ export function startApi() {
     })
   );
 
+  app.get(
+    "/api/events/by-tx/:hash",
+    asyncHandler(async (req, res) => {
+      const event = await db.getEventByTxHash(req.params.hash);
+      res.json(event);
+    })
+  );
+
   // GET /api/events/:seq
   app.get(
     "/api/events/:seq",

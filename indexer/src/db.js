@@ -223,6 +223,14 @@ export const db = {
     return rows[0] ?? null;
   },
 
+  async getEventByTxHash(txHash) {
+    const { rows } = await pool.query(
+      "SELECT * FROM events WHERE tx_hash = $1 ORDER BY ledger DESC LIMIT 1",
+      [txHash]
+    );
+    return rows[0] ?? null;
+  },
+
   /**
    * Return paginated events where the given address appears in the description
    * or raw_topics (case-insensitive substring match).
