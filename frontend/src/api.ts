@@ -1,3 +1,5 @@
+import { reportApiReachable } from "./connection";
+
 const BASE = import.meta.env.VITE_API_URL || "/api";
 
 export interface DecodedEvent {
@@ -41,7 +43,14 @@ async function get<T>(path: string): Promise<T> {
   const timeout = setTimeout(() => controller.abort(), 10000);
 
   try {
-    const res = await fetch(BASE + path, { signal: controller.signal });
+    let res: Response;
+    try {
+      res = await fetch(BASE + path, { signal: controller.signal });
+    } catch (error) {
+      reportApiReachable(false);
+      throw error;
+    }
+    reportApiReachable(true);
     if (!res.ok) throw new Error(`API ${res.status}: ${path}`);
     return res.json();
   } catch (error) {
@@ -55,11 +64,18 @@ async function get<T>(path: string): Promise<T> {
 }
 
 async function post<T>(path: string, body: unknown): Promise<T> {
-  const res = await fetch(BASE + path, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  });
+  let res: Response;
+  try {
+    res = await fetch(BASE + path, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+  } catch (error) {
+    reportApiReachable(false);
+    throw error;
+  }
+  reportApiReachable(true);
   if (!res.ok) throw new Error(`API ${res.status}: ${path}`);
   return res.json();
 }

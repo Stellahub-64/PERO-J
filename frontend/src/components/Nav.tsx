@@ -1,9 +1,16 @@
 import { useState } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
+import { useConnectionStatus } from "../connection";
 
 export default function Nav() {
   const [q, setQ] = useState("");
   const nav = useNavigate();
+  const connectionStatus = useConnectionStatus();
+  const connectionLabel = {
+    live: "Live",
+    reconnecting: "Reconnecting...",
+    offline: "Offline",
+  }[connectionStatus];
 
   function search(e: React.FormEvent) {
     e.preventDefault();
@@ -46,6 +53,15 @@ export default function Nav() {
         />
         <button type="submit">Search</button>
       </form>
+      <span
+        className={`connection-status connection-status-${connectionStatus}`}
+        role="status"
+        aria-live="polite"
+        aria-label={`Connection status: ${connectionLabel}`}
+      >
+        <span className="connection-status-dot" aria-hidden="true" />
+        {connectionLabel}
+      </span>
     </header>
   );
 }
