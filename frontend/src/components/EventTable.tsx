@@ -55,9 +55,15 @@ export default function EventTable({ events }: Props) {
               <>
                 <tr key={`row-${ev.seq}`} style={{ borderBottom: "1px solid var(--border)" }}>
                   <td style={td}>
-                    <Link to={`/event/${ev.seq}`}>#{ev.seq}</Link>
+                    {ev.status === "pending"
+                      ? <span style={{ color: "var(--muted)" }}>Pending</span>
+                      : <Link to={`/event/${ev.seq}`}>#{ev.seq}</Link>}
                   </td>
-                  <td style={td}>{ev.ledger.toLocaleString()}</td>
+                  <td style={td}>
+                    {ev.status === "pending"
+                      ? <span className="pending-state"><span className="pending-spinner" />Confirming</span>
+                      : ev.ledger.toLocaleString()}
+                  </td>
                   <td style={td}>
                     <span className="badge">{ev.function}</span>
                   </td>

@@ -1,16 +1,29 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { StrKey } from "@stellar/stellar-sdk";
 import { api } from "../api";
 import EventTable from "../components/EventTable";
 import Skeleton from "../components/Skeleton";
+import Toast from "../components/Toast";
+import { usePendingBets } from "../optimisticBets";
 
 export default function WalletPage() {
   const { address = "" } = useParams();
   const navigate = useNavigate();
   const [searchInput, setSearchInput] = useState(address);
   const [page, setPage] = useState(1);
+  const [toast, setToast] = useState("");
+  const pendingEvents = usePendingBets(address);
+
+  useEffect(() => {
+    const handleFailure = (event: Event) => {
+      const message = (event as CustomEvent<{ message: string }>).detail?.message;
+      setToast(message || "Bet transaction failed on-chain.");
+    };
+    window.addEventListener("bet:failed", handleFailure);
+    return () => window.removeEventListener("bet:failed", handleFailure);
+  }, []);
 
   const isValidAddress = StrKey.isValidEd25519PublicKey(address);
 
@@ -20,7 +33,7 @@ export default function WalletPage() {
     enabled: !!address && isValidAddress,
   });
 
-  const events = data?.events ?? [];
+  const events = [...pendingEvents, ...(data?.events ?? [])];
   const total = data?.total ?? 0;
   const limit = data?.limit ?? 25;
 
@@ -67,6 +80,7 @@ export default function WalletPage() {
           <button disabled={page * limit >= total || events.length < limit} onClick={() => setPage(p => p + 1)}>Next →</button>
         </div>
       )}
+      {toast && <Toast message={toast} onClose={() => setToast("")} />}
     </div>
   );
 }

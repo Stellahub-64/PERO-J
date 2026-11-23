@@ -11,6 +11,8 @@ export interface DecodedEvent {
   created_at?: string;
   sac_asset?: string;
   onchain_seq?: number | null;
+  status?: "confirmed" | "pending";
+  optimistic_id?: string;
 }
 
 export interface ContractMeta {
@@ -72,6 +74,10 @@ export const api = {
     if (params.q)        q.set("q", params.q);
     if (params.page)     q.set("page", String(params.page));
     return get<EventsResponse>(`/events?${q}`);
+  },
+  distinctFunctions: async (): Promise<string[]> => {
+    const response = await get<EventsResponse>("/events");
+    return Array.from(new Set(response.events.map(event => event.function)));
   },
   event:            (seq: number)                         => get<DecodedEvent>(`/events/${seq}`),
   contract:         (id: string)                          => get<ContractMeta>(`/contracts/${id}`),
